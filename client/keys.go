@@ -1,27 +1,24 @@
 package client
 
 import (
-	"path/filepath"
-
 	"github.com/tendermint/go-crypto/keys"
-	"github.com/tendermint/go-crypto/keys/cryptostore"
-	"github.com/tendermint/go-crypto/keys/storage/filestorage"
+	"github.com/tendermint/go-crypto/keys/words"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
-// KeySubdir is the directory name under root where we store the keys
-const KeySubdir = "keys"
-
-// GetKeyManager initializes a key manager based on the configuration
-func GetKeyManager(rootDir string) keys.Manager {
-	keyDir := filepath.Join(rootDir, KeySubdir)
-	// TODO: smarter loading??? with language and fallback?
-	codec := keys.MustLoadCodec("english")
-
-	// and construct the key manager
-	manager := cryptostore.New(
-		cryptostore.SecretBox,
-		filestorage.New(keyDir),
-		codec,
+// GetKeyBase initializes a keybase based on the given db.
+// The KeyBase manages all activity requiring access to a key.
+func GetKeyBase(db dbm.DB) keys.Keybase {
+	keybase := keys.New(
+		db,
+		words.MustLoadCodec("english"),
 	)
-	return manager
+	return keybase
+}
+
+// MockKeyBase generates an in-memory keybase that will be discarded
+// useful for --dry-run to generate a seed phrase without
+// storing the key
+func MockKeyBase() keys.Keybase {
+	return GetKeyBase(dbm.NewMemDB())
 }

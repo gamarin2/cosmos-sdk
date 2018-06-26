@@ -4,24 +4,57 @@
    contain the root `toctree` directive.
 
 Welcome to the Cosmos SDK!
-======================================
+==========================
 
 .. image:: graphics/cosmos-sdk-image.png
    :height: 250px
    :width: 500px
    :align: center
 
+SDK
+---
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    
-   overview.rst
-   install.rst
-   basecoin-basics.rst
-   basecoin-tool.rst
-   key-management.rst
-   roles-and-multi-sig.rst
-   basecoin-plugins.rst
-   basecoin-kubernetes.rst
-   ibc.rst
-   glossary.rst
-   stdlib.rst
+   guides/sdk/install.md
+   guides/sdk/key-management.md
+
+.. sdk/overview.rst # needs to be updated
+.. old/glossary.rst # not completely up to date but has good content
+
+.. Basecoin
+.. --------
+
+.. .. toctree::
+   :maxdepth: 2
+
+.. old/basecoin/basics.rst # has a decent getting-start tutorial that's relatively up to date, should be consolidated with the other getting started doc
+
+.. Extensions
+.. ----------
+
+.. old/basecoin/extensions.rst # probably not worth salvaging
+
+.. Replay Protection
+.. ~~~~~~~~~~~~~~~~~
+
+..   old/replay-protection.rst # not sure if worth salvaging
+
+
+Staking
+~~~~~~~
+
+.. toctree::
+   :maxdepth: 1
+
+   guides/staking/testnet.md
+.. staking/intro.rst
+.. staking/key-management.rst
+.. staking/local-testnet.rst
+.. staking/public-testnet.rst
+
+.. IBC
+.. ---
+
+.. old/ibc.rst # needs to be updated

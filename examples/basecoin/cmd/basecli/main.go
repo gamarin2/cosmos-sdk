@@ -7,85 +7,74 @@ import (
 
 	"github.com/tendermint/tmlibs/cli"
 
-	"github.com/cosmos/cosmos-sdk/client/commands"
-	"github.com/cosmos/cosmos-sdk/client/commands/auto"
-	"github.com/cosmos/cosmos-sdk/client/commands/keys"
-	"github.com/cosmos/cosmos-sdk/client/commands/proxy"
-	"github.com/cosmos/cosmos-sdk/client/commands/query"
-	rpccmd "github.com/cosmos/cosmos-sdk/client/commands/rpc"
-	"github.com/cosmos/cosmos-sdk/client/commands/seeds"
-	txcmd "github.com/cosmos/cosmos-sdk/client/commands/txs"
-	authcmd "github.com/cosmos/cosmos-sdk/modules/auth/commands"
-	basecmd "github.com/cosmos/cosmos-sdk/modules/base/commands"
-	coincmd "github.com/cosmos/cosmos-sdk/modules/coin/commands"
-	feecmd "github.com/cosmos/cosmos-sdk/modules/fee/commands"
-	ibccmd "github.com/cosmos/cosmos-sdk/modules/ibc/commands"
-	noncecmd "github.com/cosmos/cosmos-sdk/modules/nonce/commands"
-	rolecmd "github.com/cosmos/cosmos-sdk/modules/roles/commands"
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/keys"
+	"github.com/cosmos/cosmos-sdk/client/lcd"
+	"github.com/cosmos/cosmos-sdk/client/rpc"
+	"github.com/cosmos/cosmos-sdk/client/tx"
+
+	"github.com/cosmos/cosmos-sdk/version"
+	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
+	bankcmd "github.com/cosmos/cosmos-sdk/x/bank/client/cli"
+	ibccmd "github.com/cosmos/cosmos-sdk/x/ibc/client/cli"
+	stakecmd "github.com/cosmos/cosmos-sdk/x/stake/client/cli"
+
+	"github.com/cosmos/cosmos-sdk/examples/basecoin/app"
+	"github.com/cosmos/cosmos-sdk/examples/basecoin/types"
 )
 
-// BaseCli - main basecoin client command
-var BaseCli = &cobra.Command{
-	Use:   "basecli",
-	Short: "Light client for Tendermint",
-	Long: `Basecli is a certifying light client for the basecoin abci app.
-
-It leverages the power of the tendermint consensus algorithm get full
-cryptographic proof of all queries while only syncing a fraction of the
-block headers.`,
-}
+// rootCmd is the entry point for this binary
+var (
+	rootCmd = &cobra.Command{
+		Use:   "basecli",
+		Short: "Basecoin light-client",
+	}
+)
 
 func main() {
-	commands.AddBasicFlags(BaseCli)
+	// disable sorting
+	cobra.EnableCommandSorting = false
 
-	// Prepare queries
-	query.RootCmd.AddCommand(
-		// These are default parsers, but optional in your app (you can remove key)
-		query.TxQueryCmd,
-		query.KeyQueryCmd,
-		coincmd.AccountQueryCmd,
-		noncecmd.NonceQueryCmd,
-		rolecmd.RoleQueryCmd,
-		ibccmd.IBCQueryCmd,
+	// get the codec
+	cdc := app.MakeCodec()
+
+	// TODO: setup keybase, viper object, etc. to be passed into
+	// the below functions and eliminate global vars, like we do
+	// with the cdc
+
+	// add standard rpc, and tx commands
+	rpc.AddCommands(rootCmd)
+	rootCmd.AddCommand(client.LineBreak)
+	tx.AddCommands(rootCmd, cdc)
+	rootCmd.AddCommand(client.LineBreak)
+
+	// add query/post commands (custom to binary)
+	rootCmd.AddCommand(
+		client.GetCommands(
+			authcmd.GetAccountCmd("acc", cdc, types.GetAccountDecoder(cdc)),
+		)...)
+
+	rootCmd.AddCommand(
+		client.PostCommands(
+			bankcmd.SendTxCmd(cdc),
+			ibccmd.IBCTransferCmd(cdc),
+			ibccmd.IBCRelayCmd(cdc),
+			stakecmd.GetCmdCreateValidator(cdc),
+			stakecmd.GetCmdEditValidator(cdc),
+			stakecmd.GetCmdDelegate(cdc),
+			stakecmd.GetCmdUnbond(cdc),
+		)...)
+
+	// add proxy, version and key info
+	rootCmd.AddCommand(
+		client.LineBreak,
+		lcd.ServeCommand(cdc),
+		keys.Commands(),
+		client.LineBreak,
+		version.VersionCmd,
 	)
 
-	// set up the middleware
-	txcmd.Middleware = txcmd.Wrappers{
-		feecmd.FeeWrapper{},
-		rolecmd.RoleWrapper{},
-		noncecmd.NonceWrapper{},
-		basecmd.ChainWrapper{},
-		authcmd.SigWrapper{},
-	}
-	txcmd.Middleware.Register(txcmd.RootCmd.PersistentFlags())
-
-	// you will always want this for the base send command
-	txcmd.RootCmd.AddCommand(
-		// This is the default transaction, optional in your app
-		coincmd.SendTxCmd,
-		coincmd.CreditTxCmd,
-		// this enables creating roles
-		rolecmd.CreateRoleTxCmd,
-		// these are for handling ibc
-		ibccmd.RegisterChainTxCmd,
-		ibccmd.UpdateChainTxCmd,
-		ibccmd.PostPacketTxCmd,
-	)
-
-	// Set up the various commands to use
-	BaseCli.AddCommand(
-		commands.InitCmd,
-		commands.ResetCmd,
-		keys.RootCmd,
-		seeds.RootCmd,
-		rpccmd.RootCmd,
-		query.RootCmd,
-		txcmd.RootCmd,
-		proxy.RootCmd,
-		commands.VersionCmd,
-		auto.AutoCompleteCmd,
-	)
-
-	cmd := cli.PrepareMainCmd(BaseCli, "BC", os.ExpandEnv("$HOME/.basecli"))
-	cmd.Execute()
+	// prepare and add flags
+	executor := cli.PrepareMainCmd(rootCmd, "BC", os.ExpandEnv("$HOME/.basecli"))
+	executor.Execute()
 }
